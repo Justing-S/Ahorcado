@@ -25,7 +25,7 @@ public class Juego extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
+		//Primero declaro las variables que voy a usar para el juego
 		int vidasRestantes;
 		int intentosUsados;
 		String palabraAleatoria;
@@ -35,10 +35,14 @@ public class Juego extends HttpServlet {
 		String finJuego=null;
 		String imagen;
 		
+		//Si el parametro empezar no es nulo quiere decir que le hemos dado al link de volver a empezar
+		//por lo que invalidamos la sesion actual
 		if(request.getParameter("empezar")!=null) {
 			HttpSession nuevoIntento=request.getSession();
 			nuevoIntento.invalidate();
 		}
+		
+		//Si no hay sesion creamos una nueva sesion e iniciamos todas las variables a un valor por defecto
 		
 		if(request.getSession(false)==null) {
 			HttpSession juegoNuevo=request.getSession(true);
@@ -46,16 +50,19 @@ public class Juego extends HttpServlet {
 			
 			vidasRestantes=6;
 			intentosUsados=0;
+			//Sacamos una palabra aleatoria con el metodo de la clase metodos
 			palabraAleatoria=Metodos.generaPalabra(arrayPalabras);
 			letrasUsadas="";
 			ultimaLetra="";
 			imagen="imagenes/6.png";
 			
+			//Rellenamos celdas de guiones bajos siendo el numero de guiones igual a la longitud de la palabra
 			celdas=new String[palabraAleatoria.length()];
 			for(int i=0;i<palabraAleatoria.length();i++) {
 				celdas[i]="_";
 			}
 			
+			//Metemos todas las variables en la sesion
 			juegoNuevo.setAttribute("vidasRestantes", vidasRestantes);
 			juegoNuevo.setAttribute("intentosUsados", intentosUsados);
 			juegoNuevo.setAttribute("palabraAleatoria", palabraAleatoria);
@@ -64,6 +71,7 @@ public class Juego extends HttpServlet {
 			juegoNuevo.setAttribute("celdas", celdas);
 			juegoNuevo.setAttribute("imagen", imagen);
 			
+			//Si ya existe una sesion recogemos los datos de la sesion 
 		}else {
 			HttpSession juegoActual=request.getSession();
 			
@@ -74,6 +82,7 @@ public class Juego extends HttpServlet {
 			letrasUsadas=(String) juegoActual.getAttribute("letrasUsadas");
 			ultimaLetra=(String) juegoActual.getAttribute("ultimaLetra");
 			imagen=(String)	juegoActual.getAttribute("imagen");
+			//Ya que fin de juego nos puede dar nulo lo metemos dentro de un try catch
 			try {
 				finJuego=(String)juegoActual.getAttribute("finJuego");
 			}catch(Exception e) {
@@ -82,6 +91,7 @@ public class Juego extends HttpServlet {
 		}
 		
 		
+		//Mandamos todos los datos a el jsp para pintarlos
 		request.setAttribute("vidasRestantes", vidasRestantes);
 		request.setAttribute("intentosUsados", intentosUsados);
 		request.setAttribute("palabraAleatoria", palabraAleatoria);
@@ -103,6 +113,7 @@ public class Juego extends HttpServlet {
 		// TODO Auto-generated method stub
 		HttpSession juegoActual=request.getSession();
 		
+		//VOlvemos a declarar las variables que vamos a utilizar
 		int vidasRestantes;
 		int intentosUsados;
 		String palabraAleatoria;
@@ -117,48 +128,58 @@ public class Juego extends HttpServlet {
 		String letraSinTildes;
 		String palabraSinTildes;
 		
-		
+		//Cogemos las variables contenidas en la sesion
 		vidasRestantes=(int) juegoActual.getAttribute("vidasRestantes");
 		intentosUsados=(int) juegoActual.getAttribute("intentosUsados");
 		palabraAleatoria=(String) juegoActual.getAttribute("palabraAleatoria");
 		letrasUsadas=(String) juegoActual.getAttribute("letrasUsadas");
+		//Ultima letra al ser un parametro que nos pasa el usuario por un input lo recojemos con un get parameter
 		ultimaLetra=request.getParameter("letra");
 		celdas=(String[]) juegoActual.getAttribute("celdas");
 		
-		error=Metodos.comprobarLetraIntroducida(Metodos.noTildes(ultimaLetra), letrasUsadas);
-		
+		//Quitamos los signos diacriticos tanto de la letra como de la palabra para compararlas
 		letraSinTildes=Metodos.noTildes(ultimaLetra);
 		palabraSinTildes=Metodos.noTildes(palabraAleatoria);
 		
+		error=Metodos.comprobarLetraIntroducida(letraSinTildes, letrasUsadas);
+		//Si el metodo comprobarLetraINtroducida nos devuelve una cadena vacia significa que no hay errores
 		if(error.equals("")) {
+			//Si la palabra sin tilde contiene la letra sin tilde se aumentara un intento se pintaran las celdas
+			//pero no se quitaran vidas
 			if(palabraSinTildes.contains(letraSinTildes)) {
 				celdas=Metodos.pintaCeldasSolucion(palabraAleatoria, ultimaLetra, celdas);
 				intentosUsados++;
 				letrasUsadas+=ultimaLetra;
+				//Si no aumentaran los intentos usados y se quitaran vidas
 			}else {
 				intentosUsados++;
 				letrasUsadas+=ultimaLetra;
 				vidasRestantes--;
 			}
-			
+			//SI la cadena no es nula envia un atributo al jsp llamado error con la cadena de error
 		}else {
 			request.setAttribute("error", error);
 		}
 		
+		//COmprobaremos la como tenemos la palabra actualmente sacando los valores del array
 		estadoPalabra=String.join("", celdas);
+		//Tambien sacaremos la imagen que vamos a enviar al jsp en funcion de las vidas
 		imagen=Metodos.devuelveImagen(vidasRestantes);
 		
+		//Si la palabra que tenemos actualmente es igual a la palabra aleatoria significa que habremos ganado
+		//por lo que le mandaremos un atributo de fin de juego al jsp y la imagen de victoria
 		if(estadoPalabra.equals(palabraAleatoria)) {
 			imagen="imagenes/pingu.png";
 			finJuego="Has ganado!!!";
 		}
 		
+		//SI las vidas han llegado a 0 le mandaremos el atributo de fin de juego también
 		if(vidasRestantes==0) {
 			finJuego="Has perdido";	
 		}
 		
 		
-		
+		//Metemos todos los datos en la sesion
 		juegoActual.setAttribute("vidasRestantes", vidasRestantes);
 		juegoActual.setAttribute("intentosUsados", intentosUsados);
 		juegoActual.setAttribute("palabraAleatoria", palabraAleatoria);
@@ -168,6 +189,7 @@ public class Juego extends HttpServlet {
 		juegoActual.setAttribute("finJuego", finJuego);
 		juegoActual.setAttribute("imagen", imagen);
 		
+		//Le pasamos todos los datos a el jsp
 		request.setAttribute("vidasRestantes", vidasRestantes);
 		request.setAttribute("intentosUsados", intentosUsados);
 		request.setAttribute("palabraAleatoria", palabraAleatoria);
